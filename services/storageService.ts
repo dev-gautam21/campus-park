@@ -1,31 +1,34 @@
-import { ParkingSlot, ParkingZone } from '../types';
+/**
+ * Storage Service — Backend Switcher
+ *
+ * Uses VITE_BACKEND env var to decide which backend to use:
+ *   - 'supabase' (default) → Direct Supabase SDK calls (fast, no cold starts)
+ *   - 'express'            → Existing Express/MongoDB API on localhost:5001
+ */
 
+import { ParkingSlot, ParkingZone } from '../types';
+import { supabaseStorageService } from './supabaseStorageService';
+
+const BACKEND = import.meta.env.VITE_BACKEND || 'supabase';
 const API_BASE = 'http://localhost:5001/api';
 
-export const storageService = {
-  /* -------------------- SLOTS -------------------- */
-
-  // Load all slots
+/* -------------------- EXPRESS (MongoDB) SERVICE -------------------- */
+const expressStorageService = {
   loadSlots: async (): Promise<ParkingSlot[]> => {
-  try {
-    const res = await fetch(`${API_BASE}/slots`);
-    if (!res.ok) throw new Error('Failed to load slots');
+    try {
+      const res = await fetch(`${API_BASE}/slots`);
+      if (!res.ok) throw new Error('Failed to load slots');
+      const data = await res.json();
+      return data.map((slot: any) => ({
+        ...slot,
+        id: slot._id,
+      }));
+    } catch (error) {
+      console.error('Error loading slots:', error);
+      return [];
+    }
+  },
 
-    const data = await res.json();
-
-    // ✅ MAP _id → id
-    return data.map((slot: any) => ({
-      ...slot,
-      id: slot._id,
-    }));
-  } catch (error) {
-    console.error('Error loading slots:', error);
-    return [];
-  }
-},
-
-
-  // Add a new slot
   addSlot: async (slot: ParkingSlot) => {
     try {
       const res = await fetch(`${API_BASE}/slots`, {
@@ -39,7 +42,6 @@ export const storageService = {
     }
   },
 
-  // Update slot (reserve / free)
   updateSlot: async (id: string, data: Partial<ParkingSlot>) => {
     try {
       const res = await fetch(`${API_BASE}/slots/${id}`, {
@@ -53,7 +55,6 @@ export const storageService = {
     }
   },
 
-  // Delete slot
   deleteSlot: async (id: string) => {
     try {
       await fetch(`${API_BASE}/slots/${id}`, {
@@ -64,45 +65,42 @@ export const storageService = {
     }
   },
 
-  /* -------------------- ZONES -------------------- */
-
-  // Load all zones
   loadZones: async (): Promise<ParkingZone[]> => {
-  try {
-    const res = await fetch(`${API_BASE}/zones`);
-    if (!res.ok) throw new Error('Failed to load zones');
-
-    const data = await res.json();
-
-    return data.map((zone: any) => ({
-      ...zone,
-      id: zone._id,
-    }));
-  } catch (error) {
-    console.error('Error loading zones:', error);
-    return [];
-  }
-},
-
-
-  // // Add zone (FIXED)
-addZone: async (name: string, description: string = '') => {
-  try {
-    const res = await fetch(`${API_BASE}/zones`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description }),
-    });
-
-    if (!res.ok) {
-      throw new Error('Failed to add zone');
+    try {
+      const res = await fetch(`${API_BASE}/zones`);
+      if (!res.ok) throw new Error('Failed to load zones');
+      const data = await res.json();
+      return data.map((zone: any) => ({
+        ...zone,
+        id: zone._id,
+      }));
+    } catch (error) {
+      console.error('Error loading zones:', error);
+      return [];
     }
+  },
 
-    return await res.json();
-  } catch (error) {
-    console.error('Error adding zone:', error);
-    return null;
-  }
-},
-
+  addZone: async (name: string, description: string = '') => {
+    try {
+      const res = await fetch(`${API_BASE}/zones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to add zone');
+      }
+      return await res.json();
+    } catch (error) {
+      console.error('Error adding zone:', error);
+      return null;
+    }
+  },
 };
+
+/* -------------------- EXPORT ACTIVE SERVICE -------------------- */
+
+export const storageService =
+  BACKEND === 'express' ? expressStorageService : supabaseStorageService;
+
+console.log(`🔌 CampusPark backend: ${BACKEND.toUpperCase()}`);
