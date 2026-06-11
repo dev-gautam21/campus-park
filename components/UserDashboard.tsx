@@ -22,14 +22,14 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ zones, slots, onReserve }
   const currentMinute = currentTime.getMinutes();
   const totalMinutes = currentHour * 60 + currentMinute;
   
-  const startMinutes = 9 * 60;        // 09:00 AM
-  const endMinutes = 9 * 60 + 30;     // 09:30 AM
+  const startMinutes = 8 * 60;        // 08:00 AM
+  const endMinutes = 18 * 60;         // 06:00 PM
 
   const isReservationEnabled = totalMinutes >= startMinutes && totalMinutes < endMinutes;
 
   let statusMessage = 'RESERVATIONS OPEN';
   if (totalMinutes < startMinutes) {
-    statusMessage = 'OPENS AT 09:00 AM';
+    statusMessage = 'OPENS AT 08:00 AM';
   } else if (totalMinutes >= endMinutes) {
     statusMessage = 'CLOSED FOR TODAY';
   }
